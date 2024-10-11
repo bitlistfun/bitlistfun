@@ -1,7 +1,5 @@
 # Infra
 
-## OS
-
 ```
  Static hostname: VM-4-8-ubuntu
        Icon name: computer-vm
