@@ -1,8 +1,10 @@
 #!/usr/local/bin/node
+
 //
 // Ref: https://nodejs.org/api/crypto.html
 //
 
+require('dotenv').config();
 const express = require('express')
 const crypto = require('crypto')
 
@@ -11,13 +13,11 @@ const tweetnacl = require("tweetnacl");
 const bs58 = require("bs58");
 
 const app = express()
-const port = 3000
+const port = process.env.PORT || 3000;
 
-const slat = "7edee98fe8cda35cf6576dcaa6a5a26f"
-// const key = crypto.randomBytes(32);
-const key = "b6c9213123d7135575dc40776bd67acf"
-// const iv = crypto.randomBytes(16);
-const iv = "356ed43e5206456e"
+const SLAT = process.env.SALT;
+const KEY = process.env.KEY;
+const IV = process.env.IV;
 
 app.use(express.json());
 
@@ -25,17 +25,17 @@ function sha256(content) {
   return crypto.createHash('sha256').update(content).digest('hex')
 }
 
-function aesEncrypt(data, key) {
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    var crypted = cipher.update(data, 'utf8', 'hex');
+function aesEncrypt(plaintext) {
+    const cipher = crypto.createCipheriv('aes-256-cbc', KEY, IV);
+    var crypted = cipher.update(plaintext, 'utf8', 'hex');
     crypted += cipher.final('hex');
 
     return crypted;
 }
 
-function aesDecrypt(encrypted, key) {
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-    var decrypted = decipher.update(encrypted, 'hex', 'utf8');
+function aesDecrypt(ciphertext) {
+    const decipher = crypto.createDecipheriv('aes-256-cbc', KEY, IV);
+    var decrypted = decipher.update(ciphertext, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
 
     return decrypted;
@@ -43,30 +43,34 @@ function aesDecrypt(encrypted, key) {
 
 app.get('/', (req, res) => {
     res.json({ message: "Web3 User Authentication Service" })
-    res.end();
+    return res.end();
 })
 
 app.get('/health', (req, res) => {
     res.json({ message: "ok" })
-    res.end();
+    return res.end();
 })
 
 app.post('/getUserId', function (req, res) {
-    // console.log(req.body)
     const address = req.body.address;
     if (!address) {
         res.status(400).json({ error: "parms {address} must be set" })
     } else {
-        const hash = sha256(address + slat)
-        const uid = hash.substring(0, 8)
+        const hash = sha256(address + SLAT)
+        //
+        // Maximum number of users supported,
+        // The probability of collision is extremely small
+        //
+        // C(36,16) = 7,307,872,110
+        //
+        const uid = hash.substring(0, 16)
         res.json({ result: uid })
     }
 
-    res.end();
+    return res.end();
 })
 
 app.post('/getUserToken', function (req, res) {
-    // console.log(req.body)
     const address = req.body.address;
     const signature = req.body.signature;
     const uid = req.body.uid;
@@ -77,44 +81,68 @@ app.post('/getUserToken', function (req, res) {
     //
     // verify signature
     //
-    const publicKey = new web3.PublicKey(address);
-    const messageBytes = new TextEncoder().encode(uid)
-    const result = tweetnacl.sign.detached.verify(
-          messageBytes,
-          bs58.decode(signature),
-          publicKey.toBytes(),
-    );
-    // console.log("verify:", result)
-    if(!result) {
-        res.status(400).json({ error: "signature not valid!" });
-    } else {
-        const data = address + "," + uid
-        const encrypted = aesEncrypt(data, key);
-        res.json({ result: encrypted })
+    try {
+        const publicKey = new web3.PublicKey(address);
+        const messageBytes = new TextEncoder().encode(uid)
+        const result = tweetnacl.sign.detached.verify(
+            messageBytes,
+            bs58.decode(signature),
+            publicKey.toBytes(),
+        );
+        if(!result) {
+            res.status(400).json({ error: "signature not valid!" });
+            return res.end();
+        }
+    } catch (error) {
+        console.error('Error in getUserToken[1]:', error.message);
+        res.status(500).json({ error: "Internal server error" });
+        return res.end();
     }
-    res.end();
+
+    //
+    // generate token
+    //
+    const plaintext = address + "," + uid
+    try {
+        const ciphertext = aesEncrypt(plaintext);
+        res.json({ result: ciphertext })
+        return res.end();
+    } catch (error) {
+        console.error('Error in getUserToken[2]:', error.message);
+        res.status(500).json({ error: "Internal server error" });
+        return res.end();
+    }
 })
 
 app.post('/checkUserToken', function (req, res) {
-    // console.log(req.body)
-    const encrypted = req.body.token;
-
-    if (!encrypted) {
+    const ciphertext = req.body.token;
+    if (!ciphertext) {
         res.status(400).json({ error: "parms {token} must be set" })
         return res.end();
     }
 
-    const decrypted = aesDecrypt(encrypted, key);
-    const tmp = decrypted.split(",")
+    try {
+        const plaintext = aesDecrypt(ciphertext);
+        const tmp = plaintext.split(",")
 
-    res.json({
-        result: {
-            address: tmp[0],
-            uid: tmp[1]
-        }
-    })
-    res.end();
+        res.json({
+            result: {
+                address: tmp[0],
+                uid: tmp[1]
+            }
+        })
+        return res.end();
+    } catch (error) {
+        console.error('Error in checkUserToken:', error.message);
+        res.status(500).json({ error: "Internal server error" });
+        return res.end();
+    }
 })
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send({ error: "something broke!" });
+});
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
