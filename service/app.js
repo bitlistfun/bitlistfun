@@ -1,4 +1,4 @@
-#!/usr/local/bin/node
+#!/usr/bin/env node
 
 //
 // Ref: https://nodejs.org/api/crypto.html
