@@ -51,7 +51,7 @@ const About = () => {
                 </div>
             ]}
         >
-            <DescriptionComponent itemdata={state} orderId={orderData?.memo ? orderData?.memo : ''} />
+            <DescriptionComponent itemdata={state} orderId={orderData?.memo ? orderData?.memo : ''} onFetchData={fetchOrderId} />
         </Card>
     </div>
 

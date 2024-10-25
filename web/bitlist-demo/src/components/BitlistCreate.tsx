@@ -17,20 +17,12 @@ const BitlistCreate = ({ onFetchData }: { onFetchData: () => void }) => {
     const [form] = Form.useForm()
 
     const wallet = useWallet();
-    async function payToSeeId() {
+    async function payToSeeId(values: CreateEntryArgs) {
         try {
             const signature = await transferSOL(wallet, 0.01);
             message.success(`转账成功,交易签名: ${signature}`);
             if (signature) {
-                // window.location.reload()
-                msgDestroy()
-                setTimeout(() => {
-                    messageApi.open({
-                        type: 'success',
-                        content: 'success release',
-                    });
-                }, 1000);
-                onFetchData()
+                SubmitData(values)
             }
         } catch (e: any) {
             msgDestroy()
@@ -40,15 +32,11 @@ const BitlistCreate = ({ onFetchData }: { onFetchData: () => void }) => {
                     content: e.message,
                 });
             }, 1000)
+        } finally {
+            setOpen(false)
         }
     }
-    const onCreate: FormProps<CreateEntryArgs>['onFinish'] = async (values) => {
-        console.log('Success:', values);
-        messageApi.open({
-            type: 'loading',
-            content: 'release...',
-            duration: 0,
-        });
+    async function SubmitData(values: CreateEntryArgs) {
         try {
             const payload = {
                 ...values,
@@ -60,7 +48,14 @@ const BitlistCreate = ({ onFetchData }: { onFetchData: () => void }) => {
             console.log('resdata---', resData)
             if (resData?.Id) {
                 setOpen(false);
-                payToSeeId()
+                msgDestroy()
+                setTimeout(() => {
+                    messageApi.open({
+                        type: 'success',
+                        content: 'success release',
+                    });
+                }, 1000);
+                onFetchData()
 
             }
         } catch (e: any) {
@@ -71,9 +66,22 @@ const BitlistCreate = ({ onFetchData }: { onFetchData: () => void }) => {
                     content: e.message,
                 });
             }, 1000)
+        } finally {
+            setOpen(false)
         }
+    }
+    const onCreate: FormProps<CreateEntryArgs>['onFinish'] = async (values) => {
+        console.log('Success:', values);
+        messageApi.open({
+            type: 'loading',
+            content: 'release...',
+            duration: 0,
+        });
 
+        payToSeeId(values)
     };
+
+
 
     function msgDestroy() {
         messageApi.destroy()
@@ -94,6 +102,7 @@ const BitlistCreate = ({ onFetchData }: { onFetchData: () => void }) => {
                 <Modal
                     open={open}
                     title="Add Bitlist"
+                    //   okText={createEntry.isPending ? 'releasing...' : 'submit'}
                     okText='submit'
                     okButtonProps={{ autoFocus: true, htmlType: 'submit', className: '!bg-black !text-white' }}
                     onCancel={() => setOpen(false)}

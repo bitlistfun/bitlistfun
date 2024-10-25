@@ -40,7 +40,7 @@ export const CreateBitlistHttp = (params: CreateEntryArgs) => {
 //获取订单详情
 export const GetCheckOrderIDHttp = (address: string) => {
     return request({
-        url: `/api/v2/tables/mat6hdh64lyv1e9/records?where=(Id,eq,${address})`,
+        url: `/api/v2/tables/mat6hdh64lyv1e9/records?where=(memo,eq,${address})`,
         method: 'get',
         headers: {
 

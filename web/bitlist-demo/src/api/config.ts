@@ -19,6 +19,7 @@ const API_URL = import.meta.env.VITE_API_URL
 // 打包时记得切换
 const request = new Request({
     baseURL: '/api',
+    // baseURL: 'http://localhost:5173/api',
     // baseURL: API_URL,
     timeout: 1000 * 60 * 5,
     interceptors: {
@@ -51,5 +52,13 @@ const ywzRequest = <D, T>(config: YWZRequestConfig<D, T>) => {
     }
     return request.request<YWZResponse<T>>(config)
 }
+// // 取消请求
+// export const cancelRequest = (url: string | string[]) => {
+//   return request.cancelRequest(url)
+// }
+// // 取消全部请求
+// export const cancelAllRequest = () => {
+//   return request.cancelAllRequest()
+// }
 
 export default ywzRequest

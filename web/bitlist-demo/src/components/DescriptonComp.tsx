@@ -3,21 +3,49 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { transferSOL } from "../hooks/solanaTransfer";
 import { ListDataType } from '../types/global';
 import { PayHttp } from '../api';
+import { useState } from 'react';
 // 描述组件（提取为单独的组件）
-const DescriptionComponent = ({ itemdata, orderId }: { itemdata: ListDataType, orderId: string }) => {
+const DescriptionComponent = ({ itemdata, orderId, onFetchData }: { itemdata: ListDataType, orderId: string, onFetchData: () => void }) => {
     const VITE_APP_ID = import.meta.env.VITE_APP_ID
 
     const { Id, UpdatedAt, baseAmount, chainName, costAmount, freeContent, paidContent, sender, title } = itemdata;
+    const [loading, setLoading] = useState(false)
     const walet = useWallet();
     async function payToSeeId() {
-        const signature = await transferSOL(walet, 0.01);
-        message.success(`转账成功,交易签名: ${signature}`);
-        if (signature) {
-            window.location.reload()
+        setLoading(true)
+        try {
+            const signature = await transferSOL(walet, 0.01);
+            if (signature) {
+                message.success(`transfer success, transaction signature: ${signature}`);
+                payToSeeUser()
+            }
+        } catch (error) {
+            console.log("error--", error);
+            message.error(`transfer failed, error: ${error}`);
+        } finally {
+            setLoading(false)
         }
+
     }
 
-
+    const payToSeeUser = async () => {
+        try {
+            const result = await PayHttp({
+                sender: walet.publicKey?.toString() || '',
+                recipient: VITE_APP_ID,
+                memo: Id?.toString() || ''
+            })
+            console.log("result--", result);
+            if (result?.Id) {
+                window.location.reload()
+                // onFetchData()
+            }
+        } catch (e) {
+            console.log("e--", e);
+        } finally {
+            setLoading(false)
+        }
+    }
     const items: DescriptionsProps['items'] = [
         {
             key: '1',
@@ -65,24 +93,7 @@ const DescriptionComponent = ({ itemdata, orderId }: { itemdata: ListDataType, o
             label: 'paidContent',
             children:
                 <Flex>
-                    {Number(orderId) == Number(Id) ? <p>{paidContent}</p> : <Button onClick={
-                        async () => {
-                            try {
-                                const result = await PayHttp({
-                                    sender: walet.publicKey?.toString() || '',
-                                    recipient: VITE_APP_ID,
-                                    memo: Id?.toString() || ''
-                                })
-                                console.log("result--", result);
-                                if (result?.Id) {
-                                    payToSeeId()
-                                }
-                            } catch (e) {
-                                console.log("e--", e);
-                            }
-                        }
-
-                    }>need pay to see it</Button>}
+                    {Number(orderId) == Number(Id) ? <p>{paidContent}</p> : <Button loading={loading} onClick={payToSeeId}>need pay to see it</Button>}
                 </Flex>
         },
 
