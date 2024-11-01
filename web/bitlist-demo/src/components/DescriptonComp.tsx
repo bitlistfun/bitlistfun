@@ -37,8 +37,7 @@ const DescriptionComponent = ({ itemdata, orderId, onFetchData }: { itemdata: Li
             })
             console.log("result--", result);
             if (result?.Id) {
-                window.location.reload()
-                // onFetchData()
+                onFetchData()
             }
         } catch (e) {
             console.log("e--", e);
@@ -93,7 +92,7 @@ const DescriptionComponent = ({ itemdata, orderId, onFetchData }: { itemdata: Li
             label: 'paidContent',
             children:
                 <Flex>
-                    {Number(orderId) == Number(Id) ? <p>{paidContent}</p> : <Button loading={loading} onClick={payToSeeId}>need pay to see it</Button>}
+                    {orderId && <p>{paidContent}</p> || <Button loading={loading} onClick={payToSeeId}>need pay to see it</Button>}
                 </Flex>
         },
 
