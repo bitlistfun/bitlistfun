@@ -87,11 +87,11 @@ app.post('/getUserToken', function (req, res) {
     //
     // TODO: verify signature
     //
-
+ 
     //
     // generate token
     //
-    const plaintext = address + "," + uid
+    const plaintext = address + "," + uid;
     try {
         const ciphertext = aesEncrypt(plaintext);
         res.json({ result: ciphertext })
